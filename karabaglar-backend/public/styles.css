@@ -1,0 +1,664 @@
+/* styles.css - Karabağlar KDS */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    overflow: hidden;
+}
+
+/* ==================== HARITA ==================== */
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* ==================== SENARYO TOGGLE BUTTON ==================== */
+/* Senaryo buton stilleri index.html içinde tanımlı */
+
+/* ==================== SENARYO PANELİ ==================== */
+.senaryo-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 420px;
+    max-height: 85vh;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+}
+
+.senaryo-panel.active {
+    display: flex;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Panel Header */
+.senaryo-panel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.senaryo-panel-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+/* Panel Body */
+.senaryo-panel-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.panel-aciklama {
+    background: #f0f4ff;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #4a5568;
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+}
+
+/* Parametre Listesi */
+.parametre-listesi {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.parametre-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.parametre-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.parametre-label {
+    display: block;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.parametre-aciklama {
+    font-size: 12px;
+    color: #718096;
+    margin-bottom: 10px;
+}
+
+.parametre-input-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.parametre-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.parametre-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.parametre-birim {
+    font-size: 13px;
+    color: #718096;
+    font-weight: 500;
+    min-width: 60px;
+}
+
+/* Loading */
+.loading {
+    text-align: center;
+    padding: 30px;
+    color: #718096;
+    font-size: 14px;
+}
+
+/* Panel Footer */
+.senaryo-panel-footer {
+    padding: 16px 20px;
+    background: #f7fafc;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: #4a5568;
+    border: 2px solid #e2e8f0;
+}
+
+.btn-secondary:hover {
+    background: #f7fafc;
+    border-color: #cbd5e0;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ==================== DASHBOARD PANEL ==================== */
+.dashboard-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 350px;
+    max-height: 400px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.dashboard-panel h3 {
+    font-size: 16px;
+    color: #2d3748;
+    margin-bottom: 16px;
+}
+
+#dashboardContent {
+    font-size: 13px;
+    color: #4a5568;
+}
+
+/* ==================== SCROLLBAR ==================== */
+.senaryo-panel-body::-webkit-scrollbar,
+.dashboard-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.senaryo-panel-body::-webkit-scrollbar-track,
+.dashboard-panel::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.senaryo-panel-body::-webkit-scrollbar-thumb,
+.dashboard-panel::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 10px;
+}
+
+.senaryo-panel-body::-webkit-scrollbar-thumb:hover,
+.dashboard-panel::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .senaryo-panel {
+        width: calc(100% - 40px);
+        right: 20px;
+        top: 70px;
+    }
+    
+    .senaryo-toggle-btn {
+        top: 10px;
+        right: 10px;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    .dashboard-panel {
+        width: calc(100% - 40px);
+        left: 20px;
+        bottom: 10px;
+    }
+}
+
+/* ==================== TOAST NOTIFICATION ==================== */
+.toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    animation: toastSlideIn 0.3s ease;
+}
+
+.toast.success {
+    border-left: 4px solid #48bb78;
+    color: #2f855a;
+}
+
+.toast.error {
+    border-left: 4px solid #f56565;
+    color: #c53030;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+/* ==================== MODAL OVERLAY (DASHBOARD) ==================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6) !important; /* Hafif koyu */
+    backdrop-filter: blur(5px) !important; /* Buzlu cam */
+    z-index: 9999 !important;
+    display: none; /* JavaScript ile flex yapılacak */
+    overflow-y: auto !important;
+}
+
+.modal-overlay[style*="display: flex"] {
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal Kutusu */
+.modal-overlay .modal-content,
+.modal-content {
+    background: white !important;
+    width: 90% !important;
+    max-width: 1200px !important;
+    max-height: 85vh !important;
+    border-radius: 15px !important;
+    padding: 20px !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3) !important;
+    animation: modalFadeIn 0.3s ease;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Modal Header */
+.modal-header {
+    flex-shrink: 0 !important;
+    margin-bottom: 10px !important;
+}
+
+/* Modal Body - Grafik Konteyner */
+.modal-body {
+    flex: 1 !important;
+    overflow: hidden !important;
+    max-height: calc(85vh - 100px) !important;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.close-btn:hover {
+    background: #c0392b !important;
+    transform: scale(1.1);
+}
+
+/* ==================== MAP LEGEND (GÖSTERGE) ==================== */
+.map-legend {
+    position: absolute;
+    bottom: 30px;
+    left: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    max-width: 220px;
+    font-size: 13px;
+}
+
+.map-legend h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #333;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.legend-item .color-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.legend-item .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: inline-block;
+    border: 2px solid white;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== HEADER LOGO GÖRÜNÜRLÜLÜĞÜ ==================== */
+.header-logo img,
+.header img,
+header img {
+    /* Filter kaldırıldı - Direkt beyaz ikon kullanıyoruz */
+    width: 40px !important;
+    height: auto !important;
+    margin-right: 15px;
+}
+
+/* ==================== DASHBOARD GRAFIK DÜZENİ ==================== */
+/* Grafik Alanı Izgarası */
+.chart-grid,
+.modal-body {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important; /* İki sütun */
+    grid-template-rows: 320px 320px !important; /* İki satır ve SABİT YÜKSEKLİK */
+    gap: 15px !important;
+    padding: 15px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 655px !important; /* Toplam sabit yükseklik */
+    overflow: hidden !important;
+}
+
+/* Grafik Kutusu - ZORLA SABİTLEME */
+.chart-box,
+.chart-container {
+    background: #f8f9fa !important;
+    border-radius: 12px !important;
+    padding: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    position: relative !important; /* Chart.js için KRİTİK */
+    width: 100% !important;
+    height: 320px !important; /* ZORLA SABİT YÜKSEKLİK */
+    max-height: 320px !important;
+    min-height: 320px !important;
+    overflow: hidden !important; /* Taşmayı engelle */
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.chart-box h3,
+.chart-container h3 {
+    font-size: 0.85rem !important;
+    color: #444 !important;
+    margin: 0 0 8px 0 !important;
+    padding: 0 0 4px 0 !important;
+    text-transform: uppercase;
+    font-weight: bold !important;
+    border-bottom: 2px solid #3b82f6 !important;
+    width: fit-content !important;
+    flex-shrink: 0 !important; /* Başlık küçülmesin */
+    line-height: 1.2 !important;
+}
+
+/* Canvas Sınırlaması - ZORLA */
+.chart-box canvas,
+.chart-container canvas {
+    max-width: 100% !important;
+    max-height: 280px !important;
+    width: 100% !important;
+    height: 280px !important;
+    display: block !important;
+}
+
+/* Responsive - Mobilde tek sütun */
+@media (max-width: 768px) {
+    .chart-grid,
+    .modal-body {
+        grid-template-columns: 1fr !important; /* Tek sütun */
+    }
+}
+
+/* ==================== HEADER BUTONU (ŞIK TASARIM) ==================== */
+.header-btn {
+    background: white !important;
+    color: #1e40af !important; /* Koyu mavi */
+    border: 2px solid #e5e7eb !important;
+    border-radius: 30px !important; /* Yuvarlak köşeler */
+    padding: 12px 28px !important; /* Geniş ve tok */
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15) !important; /* Hafif gölge */
+}
+
+.header-btn:hover {
+    background: #1e40af !important; /* Hover'da mavi */
+    color: white !important;
+    box-shadow: 0 8px 20px rgba(30, 64, 175, 0.35) !important; /* Daha belirgin gölge */
+    transform: translateY(-2px) !important; /* Hafif yukarı kaldır */
+}
+
+.header-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25) !important;
+}
+
+/* ==================== EXPORT BUTONLARI (PDF & EXCEL) ==================== */
+.export-btn {
+    padding: 8px 16px !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* PDF Butonu (Kırmızımsı) */
+.pdf-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3) !important;
+}
+
+.pdf-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    box-shadow: 0 5px 15px rgba(239, 68, 68, 0.5) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Excel Butonu (Yeşilimsi) */
+.excel-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+.excel-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.5) !important;
+    transform: translateY(-2px) !important;
+}
+
+.export-btn:active {
+    transform: translateY(0) !important;
+}
+
+/* Export Butonları İkonları */
+.export-btn::before {
+    content: attr(data-icon);
+    font-size: 1rem;
+}
+
+/* Header Sıfırlama */
+header.main-header {
+    width: 100%;
+    height: 70px;
+    background: #154360 !important; /* Koyu Lacivert - Kesin Renk */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    position: relative;
+    z-index: 1000;
+}
+
+/* Sol Taraf: Logo ve Yazı */
+.brand-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.nav-logo {
+    height: 45px !important; /* Logo boyutu SABİT */
+    width: auto;
+    filter: brightness(0) invert(1); /* Logoyu Beyaz Yap */
+}
+
+.titles h1 {
+    color: white;
+    font-size: 1.4rem;
+    margin: 0;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.titles p {
+    color: #d1f2eb; /* Açık turkuaz */
+    font-size: 0.8rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+/* Sağ Taraf: Buton */
+.btn-analiz {
+    background-color: white;
+    color: #154360; /* Lacivert Yazı */
+    border: none;
+    padding: 10px 25px;
+    border-radius: 50px; /* Hap şeklinde */
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.btn-analiz:hover {
+    transform: scale(1.05); /* Üzerine gelince hafif büyü */
+    background-color: #f1f1f1;
+}
+

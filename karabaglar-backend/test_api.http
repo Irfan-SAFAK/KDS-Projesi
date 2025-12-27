@@ -1,0 +1,42 @@
+### Test API Endpoints - Karabağlar KDS Senaryo Modülü
+### Bu dosyayı VS Code REST Client extension ile kullanabilirsiniz
+
+### 1. Sunucu Kontrolü
+GET http://localhost:3000
+
+###
+
+### 2. Tüm Parametreleri Getir
+GET http://localhost:3000/api/parametreler
+
+###
+
+### 3. Parametreleri Güncelle (Örnek)
+POST http://localhost:3000/api/parametreler/guncelle
+Content-Type: application/json
+
+{
+  "parametreler": [
+    {
+      "id": 1,
+      "deger": 1500
+    },
+    {
+      "id": 2,
+      "deger": 8000
+    }
+  ]
+}
+
+###
+
+### 4. Mahalle Analizi Getir (Kontrol için)
+GET http://localhost:3000/api/dashboard/mahalle-analizi
+
+###
+
+### NOT: 
+### - İlk önce GET isteğiyle parametrelerin ID'lerini öğrenin
+### - Sonra POST isteğinde doğru ID'leri kullanın
+### - Her güncelleme sonrası analiz otomatik yenilenir
+

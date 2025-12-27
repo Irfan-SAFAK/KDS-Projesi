@@ -1,0 +1,3063 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karabağlar Belediyesi - Karar Destek Sistemi</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Export Kütüphaneleri (PDF & Excel) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            overflow: hidden;
+            color: #2c3e50;
+        }
+
+        /* Grid Layout */
+        .container {
+            display: grid;
+            grid-template-rows: 70px 1fr;
+            grid-template-columns: 380px 1fr;
+            height: 100vh;
+            grid-template-areas: 
+                "header header"
+                "sidebar main";
+        }
+
+        /* Header (Üst Bar) - YENİ */
+        .main-header {
+            grid-area: header;
+            background: #154360 !important; /* Koyu Lacivert */
+            color: white;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 0 20px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-height: 70px;
+            height: 70px;
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-logo {
+            width: 45px !important;
+            height: auto !important;
+            filter: brightness(0) invert(1) !important; /* Beyaz logo */
+        }
+
+        .titles {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .titles h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 0;
+            line-height: 1.2;
+            color: white !important;
+        }
+
+        .titles p {
+            font-size: 0.8rem;
+            margin: 0;
+            opacity: 0.9;
+            color: #d1f2eb !important; /* Turkuaz */
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-analiz {
+            padding: 10px 25px !important;
+            background: white !important;
+            color: #154360 !important; /* Lacivert yazı */
+            border: none !important;
+            border-radius: 50px !important; /* Hap şekli */
+            font-size: 0.9rem !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .btn-analiz:hover {
+            background: #f1f1f1 !important;
+            transform: scale(1.05) !important; /* Hafif büyü */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* Sidebar (Sol Panel) */
+        .sidebar {
+            grid-area: sidebar;
+            background: white;
+            overflow-y: auto;
+            box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
+            z-index: 500;
+        }
+
+        /* İstatistik Kartları */
+        .stats-section {
+            padding: 12px !important;
+            background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px !important;
+            margin-bottom: 0 !important;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 10px !important;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 3px solid #1e40af;
+            transition: transform 0.2s;
+            margin-bottom: 8px !important;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .stat-icon {
+            font-size: 16px !important;
+            margin-bottom: 4px !important;
+        }
+
+        .stat-value {
+            font-size: 1.5rem !important;
+            font-weight: 700 !important;
+            color: #1e40af;
+            margin-bottom: 2px !important;
+            line-height: 1 !important;
+        }
+
+        .stat-label {
+            font-size: 10px !important;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-card.critical {
+            border-left-color: #dc2626;
+        }
+
+        .stat-card.critical .stat-value {
+            color: #dc2626;
+        }
+
+
+        /* ============================================
+           ANALİZ MODAL (FULL SCREEN)
+           ============================================ */
+        
+        .analiz-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .analiz-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .analiz-modal-content {
+            background: white;
+            width: 95%;
+            max-width: 1600px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+            overflow: hidden;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .analiz-modal-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 24px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1e3a8a;
+        }
+
+        .analiz-modal-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-kapat-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 32px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .modal-kapat-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .analiz-modal-body {
+            padding: 30px;
+            background: #f8fafc;
+        }
+
+        /* 2x2 Grafik Grid */
+        .grafik-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .grafik-kart {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .grafik-kart:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            transform: translateY(-4px);
+        }
+
+        .grafik-baslik {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 20px 0;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #e5e7eb;
+        }
+
+        /* Tablo Container */
+        .analiz-tablo-container {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .tablo-baslik {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0 0 16px 0;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #e5e7eb;
+        }
+
+        .analiz-tablo {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .grafik-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mahalle Listesi (Accordion) */
+        .neighborhoods-section {
+            padding: 20px;
+        }
+
+        .mahalle-accordion {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .mahalle-accordion-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 15px;
+            user-select: none;
+            transition: all 0.2s ease;
+            list-style: none;
+        }
+
+        .mahalle-accordion-header::-webkit-details-marker {
+            display: none;
+        }
+
+        .mahalle-accordion-header::marker {
+            display: none;
+        }
+
+        .mahalle-accordion-header:hover {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+
+        .accordion-icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .mahalle-accordion[open] .accordion-icon {
+            transform: rotate(90deg);
+        }
+
+        .accordion-title {
+            flex: 1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .mahalle-badge {
+            background: #1e40af;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mahalle-accordion-content {
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 12px;
+            background: white;
+        }
+
+        .mahalle-accordion-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .mahalle-accordion-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 3px;
+        }
+
+        .mahalle-accordion-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        .mahalle-accordion-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .neighborhood-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .neighborhood-item:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateX(4px);
+        }
+
+        .neighborhood-item.active {
+            border-color: #1e40af;
+            background: #eff6ff;
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+        }
+
+        .neighborhood-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .neighborhood-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .neighborhood-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-critical {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .badge-normal {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .neighborhood-population {
+            font-size: 13px;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Mahalle Detay (Sol Panelde Açılacak) */
+        .detail-view {
+            padding: 20px;
+            background: #f8fafc;
+            border-top: 3px solid #1e40af;
+            display: none;
+        }
+
+        .detail-view.active {
+            display: block;
+        }
+
+        .detail-header {
+            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .detail-header h3 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .detail-header .population-info {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .close-detail-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .close-detail-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .service-item {
+            background: white;
+            padding: 18px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .service-item.insufficient {
+            border-left: 4px solid #dc2626;
+        }
+
+        .service-item.sufficient {
+            border-left: 4px solid #059669;
+        }
+
+        .service-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .service-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-insufficient {
+            background: #dc2626;
+            color: white;
+        }
+
+        .status-sufficient {
+            background: #059669;
+            color: white;
+        }
+
+        /* Progress Bar */
+        .service-progress {
+            margin-bottom: 10px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar-container {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #1e40af);
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .progress-bar-fill.insufficient {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .progress-bar-fill.sufficient {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .service-numbers {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .service-number {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .number-label {
+            color: #9ca3af;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .number-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .service-note {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #0369a1;
+            border-left: 3px solid #0ea5e9;
+        }
+
+        /* Main (Harita Alanı) */
+        .main {
+            grid-area: main;
+            position: relative;
+            background: #e5e7eb;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Map Legend */
+        .map-legend {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: white !important;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+            z-index: 500;
+            min-width: 220px;
+            max-width: 240px;
+            display: none; /* Varsayılan olarak gizli */
+            transition: all 0.3s ease;
+            color: #333 !important;
+        }
+
+        .map-legend.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Senaryo Toggle Button */
+        .senaryo-toggle-btn {
+            position: fixed !important;
+            top: 80px !important;
+            right: 20px !important;
+            z-index: 1000 !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            padding: 12px 20px !important;
+            border-radius: 10px !important;
+            cursor: pointer !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .senaryo-toggle-btn:hover {
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5) !important;
+        }
+
+        .senaryo-toggle-btn svg {
+            width: 18px !important;
+            height: 18px !important;
+        }
+
+        /* Legend Toggle Button */
+        .legend-toggle-btn {
+            position: absolute;
+            top: 140px !important;
+            right: 20px;
+            background: white;
+            color: #1e40af;
+            border: 2px solid #1e40af;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .legend-toggle-btn:hover {
+            background: #1e40af;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 64, 175, 0.4);
+        }
+
+        .legend-toggle-btn:active {
+            transform: translateY(0);
+        }
+
+        .legend-title {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333 !important;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #333 !important;
+        }
+
+        .legend-item span {
+            color: #333 !important;
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .legend-color.critical {
+            background: rgba(239, 68, 68, 0.4);
+        }
+
+        .legend-color.warning {
+            background: rgba(251, 191, 36, 0.35);
+        }
+
+        .legend-color.normal {
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        /* Scrollbar Styling */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Loading */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2000;
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .spinner {
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #1e40af;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 15px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 320px 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "header"
+                    "main";
+            }
+            
+            .sidebar {
+                display: none;
+            }
+
+            .header {
+                padding: 0 15px;
+                flex-direction: column;
+                gap: 10px;
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-analiz-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .header-title h1 {
+                font-size: 16px;
+            }
+
+            .header-title p {
+                font-size: 10px;
+            }
+        }
+
+        /* Leaflet Popup Custom */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .leaflet-popup-content {
+            margin: 12px 16px;
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .popup-info {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .popup-status {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        /* ============================================
+           SENARYO YÖNETİMİ PANELİ STILLER (YENİ)
+           ============================================ */
+        
+        .senaryo-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .senaryo-toggle-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .senaryo-panel-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .senaryo-panel-body::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .senaryo-panel-body::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+
+        .senaryo-panel-body::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary:hover {
+            background: #f7fafc;
+            border-color: #cbd5e0;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        @keyframes toastSlideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -20px);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        /* ============================================
+           ACCORDION STİLLERİ (YENİ)
+           ============================================ */
+        
+        .parametre-kategori {
+            margin-bottom: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .parametre-kategori:hover {
+            border-color: #cbd5e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .kategori-baslik {
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .kategori-baslik:hover {
+            background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+        }
+
+        .kategori-icon {
+            font-size: 18px;
+        }
+
+        .kategori-adi {
+            flex: 1;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .kategori-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .kategori-arrow {
+            color: #718096;
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        .kategori-arrow.open {
+            transform: rotate(180deg);
+        }
+
+        .kategori-icerik {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 16px;
+        }
+
+        .kategori-icerik.open {
+            max-height: 2000px;
+            padding: 16px;
+        }
+
+        .kategori-icerik .parametre-item {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .kategori-icerik .parametre-item:hover {
+            background: white;
+            border-color: #e2e8f0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .kategori-icerik .parametre-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .parametre-label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+            font-size: 13px;
+        }
+
+        .parametre-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .parametre-input {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .parametre-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .parametre-birim {
+            font-size: 12px;
+            color: #718096;
+            font-weight: 500;
+            min-width: 50px;
+        }
+
+        /* Responsive - Senaryo Paneli */
+        @media (max-width: 768px) {
+            #senaryoPanel {
+                width: calc(100% - 40px) !important;
+                right: 20px;
+                top: 120px;
+            }
+            
+            #senaryoToggleBtn {
+                top: 10px;
+                right: 10px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Karabağlar KDS Yükleniyor...</div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="brand-group">
+                <span class="nav-logo" style="font-size: 45px; line-height: 1; filter: none !important;">🏛️</span>
+                <div class="titles">
+                    <h1>Karabağlar KDS</h1>
+                    <p>Kentsel Donatı Yönetim Paneli</p>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button id="analizRaporuBtn" class="btn-analiz">
+                    📊 Detaylı Analiz Paneli
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- İstatistikler -->
+            <div class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🏘️</div>
+                        <div class="stat-value" id="totalNeighborhoods">-</div>
+                        <div class="stat-label">Toplam Mahalle</div>
+                    </div>
+                    <div class="stat-card critical">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="criticalNeighborhoods">-</div>
+                        <div class="stat-label">Kritik Mahalle</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="totalPopulation">-</div>
+                        <div class="stat-label">Toplam Nüfus</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mahalle Listesi (Accordion) -->
+            <div class="neighborhoods-section">
+                <details class="mahalle-accordion" open>
+                    <summary class="mahalle-accordion-header">
+                        <span class="accordion-icon">📂</span>
+                        <span class="accordion-title">Tüm Mahalleler Listesi</span>
+                        <span class="mahalle-badge" id="mahalleSayisi">0</span>
+                    </summary>
+                    <div class="mahalle-accordion-content">
+                        <div id="neighborhoodList"></div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Detay Görünümü -->
+            <div id="detailView" class="detail-view">
+                <div class="detail-header">
+                    <h3 id="detailTitle">-</h3>
+                    <div class="population-info" id="detailPopulation">-</div>
+                    <button class="close-detail-btn" onclick="closeDetail()">← Listeye Dön</button>
+                </div>
+                <div id="detailContent"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content (Harita) -->
+        <main class="main">
+            <div id="map"></div>
+            
+            <!-- Gösterge Toggle Butonu -->
+            <button id="btnGostergeToggle" class="legend-toggle-btn" title="Gösterge Aç/Kapat">
+                🗺️ Gösterge
+            </button>
+            
+            <!-- Map Legend -->
+            <div class="map-legend" id="legendBox">
+                <div class="legend-title">📊 Gösterge</div>
+                <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">Mahalle Durumu</div>
+                    <div class="legend-item">
+                        <div class="legend-color critical"></div>
+                        <span>Kritik</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color warning"></div>
+                        <span>Dikkat</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color normal"></div>
+                        <span>Normal</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">Tesis Türleri</div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #2196F3; border: 2px solid white;"></div>
+                        <span style="font-size: 12px;">Okul</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #F44336; border: 2px solid white;"></div>
+                        <span style="font-size: 12px;">Sağlık</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #4CAF50; border: 2px solid white;"></div>
+                        <span style="font-size: 12px;">Park</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #FF9800; border: 2px solid white;"></div>
+                        <span style="font-size: 12px;">Spor</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #9C27B0; border: 2px solid white;"></div>
+                        <span style="font-size: 12px;">Kütüphane</span>
+                    </div>
+                    <div class="legend-item">
+                        <div style="width: 20px; height: 20px; border-radius: 50%; background: #FFEB3B; border: 2px solid #F57C00;"></div>
+                        <span style="font-size: 12px;">Afet Alanı</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- =============================================
+         SENARYO YÖNETİM PANELİ (YENİ)
+         ============================================= -->
+    
+    <!-- Senaryo Yönetim Paneli Açma Butonu -->
+    <button id="senaryoToggleBtn" class="senaryo-toggle-btn" title="Senaryo Yönetimi">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>⚙️ Senaryo Yönetimi</span>
+    </button>
+
+    <!-- Senaryo Yönetim Paneli (Başlangıçta gizli) -->
+    <div id="senaryoPanel" class="senaryo-panel" style="position: fixed; top: 150px; right: 20px; width: 420px; max-height: 75vh; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15); z-index: 1001; display: none; flex-direction: column; overflow: hidden; animation: slideIn 0.3s ease;">
+        <div class="senaryo-panel-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 18px; font-weight: 600; margin: 0;">📊 Dinamik Senaryo Yönetimi</h3>
+            <button id="senaryoCloseBtn" class="close-btn" style="background: rgba(255, 255, 255, 0.2); border: none; color: white; font-size: 28px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; line-height: 1;">&times;</button>
+        </div>
+        
+        <div class="senaryo-panel-body" style="padding: 20px; overflow-y: auto; flex: 1;">
+            <p class="panel-aciklama" style="background: #f0f4ff; padding: 12px; border-radius: 8px; font-size: 13px; color: #4a5568; margin-bottom: 20px; border-left: 4px solid #667eea;">
+                Kentsel donatı parametrelerini değiştirerek farklı senaryoları test edebilirsiniz.
+            </p>
+            
+            <!-- Parametreler burada dinamik olarak yüklenecek -->
+            <div id="parametreListesi" class="parametre-listesi" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="loading" style="text-align: center; padding: 30px; color: #718096; font-size: 14px;">Parametreler yükleniyor...</div>
+            </div>
+        </div>
+        
+        <div class="senaryo-panel-footer" style="padding: 16px 20px; background: #f7fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px;">
+            <button id="kaydetBtn" class="btn btn-primary" style="flex: 1; padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                💾 Kaydet ve Analizi Yenile
+            </button>
+            <button id="iptalBtn" class="btn btn-secondary" style="flex: 1; padding: 12px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; background: white; color: #4a5568; border: 2px solid #e2e8f0;">
+                ↺ İptal
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ============================================
+        // GLOBAL DEĞİŞKENLER
+        // ============================================
+        let map;
+        let neighborhoodsData = [];
+        let polygonLayers = {};
+        let activeNeighborhood = null;
+        let markerGroup; // Marker'lar için LayerGroup
+        
+        // Senaryo Yönetimi Değişkenleri
+        let parametreler = [];
+        let originalParametreler = [];
+
+        // ============================================
+        // TESİS KATEGORİLERİ VE RENK HARITASI
+        // SADECE VERİTABANINDAKİ TABLO İSİMLERİ!
+        // ============================================
+        const facilityConfig = {
+            'okullar': { 
+                icon: '🏫', 
+                name: 'Okullar', 
+                color: '#2196F3' // Mavi
+            },
+            'saglik_ocaklari': { 
+                icon: '🏥', 
+                name: 'Sağlık Ocakları', 
+                color: '#F44336' // Kırmızı
+            },
+            'parklar_yesil_alanlar': { 
+                icon: '🌳', 
+                name: 'Parklar ve Yeşil Alanlar', 
+                color: '#4CAF50' // Yeşil - DİKKAT: 'parklar' değil!
+            },
+            'spor_tesisleri': { 
+                icon: '⚽', 
+                name: 'Spor Tesisleri', 
+                color: '#FF9800' // Turuncu
+            },
+            'kutuphaneler': { 
+                icon: '📚', 
+                name: 'Kütüphaneler', 
+                color: '#9C27B0' // Mor
+            },
+            'afet_toplanma_alanlari': { 
+                icon: '🚨', 
+                name: 'Afet Toplanma Alanları', 
+                color: '#FFEB3B' // Sarı
+            },
+            'bos_araziler': { 
+                icon: '🏗️', 
+                name: 'Boş Araziler', 
+                color: '#607D8B' // Gri
+            }
+        };
+
+        // ============================================
+        // HARİTA BAŞLATMA
+        // ============================================
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true
+            }).setView([38.3738, 27.0887], 12); // İzmir Karabağlar
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            map.zoomControl.setPosition('topright');
+            
+            // Marker'lar için LayerGroup oluştur (yüksek z-index)
+            markerGroup = L.layerGroup().addTo(map);
+            markerGroup.setZIndex(1000); // Polygon'ların üstünde
+        }
+
+        // ============================================
+        // MARKER YÖNETİMİ - MANUEL VE AÇIK
+        // ============================================
+        
+        // Marker'ları temizle
+        function clearMarkers() {
+            if (markerGroup) {
+                markerGroup.clearLayers();
+            }
+        }
+
+        // Marker'ları göster - HARDCODED (Her kategori ayrı ayrı)
+        function showMarkers(analiz, mahalleAdi) {
+            // ADIM 1: Eski marker'ları temizle
+            clearMarkers();
+            
+            if (!analiz) {
+                console.log('⚠️ Analiz verisi bulunamadı');
+                return;
+            }
+            
+            console.log(`📍 ${mahalleAdi} için marker'lar ekleniyor...`);
+            let totalMarkers = 0;
+            
+            // ==========================================
+            // 1. OKULLAR - MAVİ
+            // ==========================================
+            if (analiz.okullar && analiz.okullar.liste && Array.isArray(analiz.okullar.liste)) {
+                console.log(`  🏫 okullar: ${analiz.okullar.liste.length} tesis`);
+                analiz.okullar.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME - String'den Number'a
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        // lat değeri 30'dan küçükse koordinatlar ters gelmiş demektir
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Okul ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    // GEÇERLİLİK KONTROLÜ
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `İsimsiz Okul (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#2196F3', // Mavi
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #2196F3; padding-bottom: 6px;">
+                                    🏫 ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Okullar
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Okul marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'} - lat:${facility.lat}, lon:${facility.lon}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 2. SAĞLIK OCAKLARI - KIRMIZI
+            // ==========================================
+            if (analiz.saglik_ocaklari && analiz.saglik_ocaklari.liste && Array.isArray(analiz.saglik_ocaklari.liste)) {
+                console.log(`  🏥 saglik_ocaklari: ${analiz.saglik_ocaklari.liste.length} tesis`);
+                analiz.saglik_ocaklari.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Sağlık ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `İsimsiz Sağlık Ocağı (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#F44336', // Kırmızı
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #F44336; padding-bottom: 6px;">
+                                    🏥 ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Sağlık Ocakları
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Sağlık marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 3. PARKLAR VE YEŞİL ALANLAR - YEŞİL
+            // ==========================================
+            if (analiz.parklar_yesil_alanlar && analiz.parklar_yesil_alanlar.liste && Array.isArray(analiz.parklar_yesil_alanlar.liste)) {
+                console.log(`  🌳 parklar_yesil_alanlar: ${analiz.parklar_yesil_alanlar.liste.length} tesis`);
+                analiz.parklar_yesil_alanlar.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Park ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `İsimsiz Park (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#4CAF50', // Yeşil
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #4CAF50; padding-bottom: 6px;">
+                                    🌳 ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Parklar ve Yeşil Alanlar
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Park marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 4. SPOR TESİSLERİ - TURUNCU
+            // ==========================================
+            if (analiz.spor_tesisleri && analiz.spor_tesisleri.liste && Array.isArray(analiz.spor_tesisleri.liste)) {
+                console.log(`  ⚽ spor_tesisleri: ${analiz.spor_tesisleri.liste.length} tesis`);
+                analiz.spor_tesisleri.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Spor ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `İsimsiz Spor Tesisi (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#FF9800', // Turuncu
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #FF9800; padding-bottom: 6px;">
+                                    ⚽ ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Spor Tesisleri
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Spor marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 5. KÜTÜPHANELER - MOR
+            // ==========================================
+            if (analiz.kutuphaneler && analiz.kutuphaneler.liste && Array.isArray(analiz.kutuphaneler.liste)) {
+                console.log(`  📚 kutuphaneler: ${analiz.kutuphaneler.liste.length} tesis`);
+                analiz.kutuphaneler.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Kütüphane ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `İsimsiz Kütüphane (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#9C27B0', // Mor
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #9C27B0; padding-bottom: 6px;">
+                                    📚 ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Kütüphaneler
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Kütüphane marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 6. AFET TOPLANMA ALANLARI - SARI
+            // ==========================================
+            if (analiz.afet_toplanma_alanlari && analiz.afet_toplanma_alanlari.liste && Array.isArray(analiz.afet_toplanma_alanlari.liste)) {
+                console.log(`  🚨 afet_toplanma_alanlari: ${analiz.afet_toplanma_alanlari.liste.length} tesis`);
+                analiz.afet_toplanma_alanlari.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Afet ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `Afet Alanı (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#FFEB3B', // Sarı
+                            color: '#F57C00', // Turuncu kenarlık
+                            weight: 3,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #FFEB3B; padding-bottom: 6px;">
+                                    🚨 ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Afet Toplanma Alanları
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 3 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Afet marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            // ==========================================
+            // 7. BOŞ ARAZİLER - GRİ/SİYAH
+            // ==========================================
+            if (analiz.bos_araziler && analiz.bos_araziler.liste && Array.isArray(analiz.bos_araziler.liste)) {
+                console.log(`  🏗️ bos_araziler: ${analiz.bos_araziler.liste.length} tesis`);
+                analiz.bos_araziler.liste.forEach((facility, index) => {
+                    // KOORDİNAT DÖNÜŞTÜRME
+                    let lat = parseFloat(facility.lat);
+                    let lon = parseFloat(facility.lon);
+                    
+                    // KOORDİNAT SWAP - İzmir için lat (38.x) > lon (27.x) olmalı
+                    if (!isNaN(lat) && !isNaN(lon) && lat < 30) {
+                        [lat, lon] = [lon, lat];
+                        console.log(`    ⚠️ Koordinat swap yapıldı: ${facility.ad || 'İsimsiz'}`);
+                    }
+                    
+                    console.log(`    [Boş Arazi ${index}] ${facility.ad || 'İsimsiz'} - lat:${lat}, lon:${lon}, geçerli:${!isNaN(lat) && !isNaN(lon)}`);
+                    
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        let facilityName = facility.ad;
+                        if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                            facilityName = `Boş Arazi (#${index + 1})`;
+                        }
+                        
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#607D8B', // Gri
+                            color: '#ffffff',
+                            weight: 2.5,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        });
+                        
+                        marker.bindPopup(`
+                            <div style="font-family: 'Roboto', sans-serif; min-width: 180px;">
+                                <div style="font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 14px; border-bottom: 2px solid #607D8B; padding-bottom: 6px;">
+                                    🏗️ ${facilityName}
+                                </div>
+                                <div style="font-size: 12px; color: #64748b; line-height: 1.6;">
+                                    <strong>Kategori:</strong> Boş Araziler
+                                    ${facility.tur ? `<br><strong>Tür:</strong> ${facility.tur}` : ''}
+                                </div>
+                            </div>
+                        `);
+                        
+                        marker.on('mouseover', function() {
+                            this.setStyle({ radius: 11, fillOpacity: 1, weight: 4 });
+                            this.bringToFront();
+                        });
+                        marker.on('mouseout', function() {
+                            this.setStyle({ radius: 8, fillOpacity: 0.9, weight: 2.5 });
+                        });
+                        
+                        marker.addTo(markerGroup);
+                        totalMarkers++;
+                        console.log(`    ✓ Boş Arazi marker'ı eklendi: ${facilityName}`);
+                    } else {
+                        console.warn(`    ✗ Geçersiz koordinat: ${facility.ad || 'İsimsiz'}`);
+                    }
+                });
+            }
+            
+            console.log(`✅ Toplam ${totalMarkers} marker eklendi`);
+        }
+
+        // ============================================
+        // VERİ ÇEKME (API)
+        // ============================================
+        async function fetchData() {
+            try {
+                const response = await fetch('http://localhost:3000/api/dashboard/analiz');
+                if (!response.ok) throw new Error('API bağlantısı başarısız');
+                
+                const data = await response.json();
+                neighborhoodsData = data;
+                
+                console.log(`✅ ${data.length} mahalle verisi yüklendi`);
+                
+                // Loading'i kaldır
+                document.getElementById('loading').style.display = 'none';
+                
+                // UI güncelle
+                updateStatistics();
+                renderNeighborhoodList();
+                renderMapPolygons();
+            } catch (error) {
+                console.error('❌ Veri yükleme hatası:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="spinner"></div>
+                    <div class="loading-text" style="color: #dc2626;">
+                        ⚠️ Veri yüklenemedi!<br>
+                        <small style="font-size: 12px; font-weight: 400;">${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================
+        // YARDIMCI FONKSİYONLAR
+        // ============================================
+        
+        // Mahallenin kritiklik seviyesini hesapla
+        function getNeighborhoodStatus(neighborhood) {
+            const analiz = neighborhood.analiz;
+            // DOĞRU TABLO İSİMLERİ
+            const services = [
+                'okullar', 
+                'saglik_ocaklari', 
+                'parklar_yesil_alanlar',  // 'parklar' değil!
+                'spor_tesisleri', 
+                'kutuphaneler', 
+                'afet_toplanma_alanlari'
+            ];
+            
+            let insufficientCount = 0;
+            let totalServices = 0;
+
+            services.forEach(service => {
+                if (analiz[service] && analiz[service].durum) {
+                    totalServices++;
+                    // "GEREK YOK" durumunu yetersiz olarak saymıyoruz
+                    if (analiz[service].durum === 'YETERSİZ') {
+                        insufficientCount++;
+                    }
+                }
+            });
+
+            if (insufficientCount >= 3) return 'critical'; // 3+ yetersiz hizmet
+            if (insufficientCount >= 1) return 'warning';  // 1-2 yetersiz hizmet
+            return 'normal'; // Tümü yeterli
+        }
+
+        // İstatistikleri güncelle
+        function updateStatistics() {
+            const total = neighborhoodsData.length;
+            const critical = neighborhoodsData.filter(n => getNeighborhoodStatus(n) === 'critical').length;
+            const totalPop = neighborhoodsData.reduce((sum, n) => sum + (n.nufus || 0), 0);
+
+            document.getElementById('totalNeighborhoods').textContent = total;
+            document.getElementById('criticalNeighborhoods').textContent = critical;
+            document.getElementById('totalPopulation').textContent = (totalPop / 1000).toFixed(0) + 'K';
+        }
+
+        // ============================================
+        // MAHALLE LİSTESİ OLUŞTURMA
+        // ============================================
+        function renderNeighborhoodList() {
+            const listContainer = document.getElementById('neighborhoodList');
+            listContainer.innerHTML = '';
+            
+            // Mahalle sayısını güncelle (Accordion başlığı için)
+            const mahalleSayisiElement = document.getElementById('mahalleSayisi');
+            if (mahalleSayisiElement) {
+                mahalleSayisiElement.textContent = neighborhoodsData.length;
+            }
+
+            neighborhoodsData.forEach((neighborhood) => {
+                const status = getNeighborhoodStatus(neighborhood);
+                
+                const item = document.createElement('div');
+                item.className = 'neighborhood-item';
+                item.setAttribute('data-mahalle', neighborhood.mahalle_adi);
+                
+                let badgeClass = 'badge-normal';
+                let badgeText = 'NORMAL';
+                if (status === 'critical') {
+                    badgeClass = 'badge-critical';
+                    badgeText = 'KRİTİK';
+                } else if (status === 'warning') {
+                    badgeClass = 'badge-warning';
+                    badgeText = 'DİKKAT';
+                }
+
+                item.innerHTML = `
+                    <div class="neighborhood-header">
+                        <span class="neighborhood-name">${neighborhood.mahalle_adi}</span>
+                        <span class="neighborhood-badge ${badgeClass}">${badgeText}</span>
+                    </div>
+                    <div class="neighborhood-population">
+                        👥 ${neighborhood.nufus ? neighborhood.nufus.toLocaleString('tr-TR') : 'Bilinmiyor'}
+                    </div>
+                `;
+                
+                item.addEventListener('click', () => selectNeighborhood(neighborhood));
+                listContainer.appendChild(item);
+            });
+        }
+
+        // ============================================
+        // HARİTADA POLİGONLARI ÇİZ
+        // ============================================
+        function renderMapPolygons() {
+            neighborhoodsData.forEach(neighborhood => {
+                if (!neighborhood.sinirlar || !neighborhood.sinirlar.coordinates) return;
+
+                const status = getNeighborhoodStatus(neighborhood);
+                
+                // Durum bazlı renklendirme
+                let color, fillColor, fillOpacity;
+                if (status === 'critical') {
+                    color = '#dc2626';
+                    fillColor = '#ef4444';
+                    fillOpacity = 0.4;
+                } else if (status === 'warning') {
+                    color = '#d97706';
+                    fillColor = '#fbbf24';
+                    fillOpacity = 0.35;
+                } else {
+                    color = '#059669';
+                    fillColor = '#10b981';
+                    fillOpacity = 0.35;
+                }
+
+                // GeoJSON koordinatları Leaflet formatına çevir
+                const coordinates = neighborhood.sinirlar.coordinates[0].map(coord => [coord[1], coord[0]]);
+                
+                const polygon = L.polygon(coordinates, {
+                    color: color,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    weight: 2,
+                    opacity: 0.8,
+                    pane: 'overlayPane' // Polygon'lar alt katmanda
+                }).addTo(map);
+
+                // Popup
+                let statusText = 'Normal';
+                let statusClass = 'badge-normal';
+                if (status === 'critical') {
+                    statusText = 'Kritik';
+                    statusClass = 'badge-critical';
+                } else if (status === 'warning') {
+                    statusText = 'Dikkat';
+                    statusClass = 'badge-warning';
+                }
+
+                polygon.bindPopup(`
+                    <div class="popup-title">${neighborhood.mahalle_adi}</div>
+                    <div class="popup-info">👥 Nüfus: ${neighborhood.nufus ? neighborhood.nufus.toLocaleString('tr-TR') : '-'}</div>
+                    <div class="popup-status ${statusClass}">${statusText}</div>
+                `);
+
+                // Hover efekti
+                polygon.on('mouseover', function() {
+                    this.setStyle({
+                        weight: 3,
+                        fillOpacity: fillOpacity + 0.15
+                    });
+                });
+
+                polygon.on('mouseout', function() {
+                    this.setStyle({
+                        weight: 2,
+                        fillOpacity: fillOpacity
+                    });
+                });
+
+                // ============================================
+                // TIKLA OLAYILARI - KRİTİK KISIM
+                // ============================================
+                polygon.on('click', () => {
+                    console.log(`🔵 ${neighborhood.mahalle_adi} mahallesi tıklandı`);
+                    
+                    // ADIM A: Sidebar'ı güncelle
+                    updateSidebar(neighborhood);
+                    
+                    // ADIM B: Marker'ları göster
+                    showMarkers(neighborhood.analiz, neighborhood.mahalle_adi);
+                    
+                    // ADIM C: Haritayı zoom yap
+                    map.fitBounds(polygon.getBounds(), { 
+                        padding: [50, 50],
+                        maxZoom: 14
+                    });
+                });
+
+                polygonLayers[neighborhood.mahalle_adi] = polygon;
+            });
+        }
+
+        // ============================================
+        // SİDEBAR GÜNCELLEMESİ (Mahalle Tıklandığında)
+        // ============================================
+        function updateSidebar(neighborhood) {
+            activeNeighborhood = neighborhood;
+
+            // Liste vurgulama
+            document.querySelectorAll('.neighborhood-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-mahalle') === neighborhood.mahalle_adi) {
+                    item.classList.add('active');
+                }
+            });
+
+            // Mahalle listesini gizle, detayı göster
+            document.querySelector('.neighborhoods-section').style.display = 'none';
+            showDetail(neighborhood);
+        }
+
+        // Mahalle seçimi (Sidebar listesinden tıklandığında)
+        function selectNeighborhood(neighborhood) {
+            console.log(`📋 Sidebar'dan ${neighborhood.mahalle_adi} seçildi`);
+            
+            // Sidebar'ı güncelle
+            updateSidebar(neighborhood);
+            
+            // Marker'ları göster
+            showMarkers(neighborhood.analiz, neighborhood.mahalle_adi);
+            
+            // Haritada zoom
+            const polygon = polygonLayers[neighborhood.mahalle_adi];
+            if (polygon) {
+                map.fitBounds(polygon.getBounds(), { 
+                    padding: [50, 50],
+                    maxZoom: 14
+                });
+            }
+        }
+
+        // ============================================
+        // DETAY GÖRÜNÜMÜ - HARDCODED (Her kategori manuel)
+        // ============================================
+        function showDetail(neighborhood) {
+            document.getElementById('detailTitle').textContent = neighborhood.mahalle_adi;
+            document.getElementById('detailPopulation').textContent = `👥 Nüfus: ${neighborhood.nufus ? neighborhood.nufus.toLocaleString('tr-TR') : 'Bilinmiyor'}`;
+            
+            const content = document.getElementById('detailContent');
+            content.innerHTML = '';
+            const analiz = neighborhood.analiz;
+
+            // Yardımcı fonksiyon - Kategori kartı oluştur
+            function createServiceCard(categoryName, icon, color, service) {
+                if (!service) return;
+                
+                const durum = service.durum || '';
+                const isInsufficient = durum === 'YETERSİZ';
+                const isNotNeeded = durum === 'GEREK YOK';
+                
+                const item = document.createElement('div');
+                if (isNotNeeded) {
+                    item.className = 'service-item';
+                    item.style.borderLeftColor = '#64748b';
+                    item.style.background = 'linear-gradient(to right, rgba(100, 116, 139, 0.05), white)';
+                } else {
+                    item.className = `service-item ${isInsufficient ? 'insufficient' : 'sufficient'}`;
+                }
+
+                let statusBadgeClass = 'status-sufficient';
+                if (isInsufficient) statusBadgeClass = 'status-insufficient';
+                if (isNotNeeded) statusBadgeClass = 'status-sufficient';
+
+                let itemHTML = `
+                    <div class="service-title">
+                        <span class="service-name">${icon} ${categoryName}</span>
+                        ${durum ? `<span class="service-status-badge ${statusBadgeClass}" style="${isNotNeeded ? 'background: #64748b; color: white;' : ''}">${durum}</span>` : ''}
+                    </div>
+                `;
+
+                if (service.mevcut !== undefined && service.gereken !== undefined) {
+                    const percentage = Math.min((service.mevcut / service.gereken) * 100, 100);
+                    itemHTML += `
+                        <div class="service-progress">
+                            <div class="progress-info">
+                                <span>Mevcut: ${service.mevcut}</span>
+                                <span>Hedef: ${service.gereken}</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill ${isInsufficient ? 'insufficient' : 'sufficient'}" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <div class="service-numbers">
+                            <div class="service-number">
+                                <span class="number-label">Mevcut</span>
+                                <span class="number-value">${service.mevcut}</span>
+                            </div>
+                            <div class="service-number">
+                                <span class="number-label">Gereken</span>
+                                <span class="number-value">${service.gereken}</span>
+                            </div>
+                            <div class="service-number">
+                                <span class="number-label">Fark</span>
+                                <span class="number-value" style="color: ${service.mevcut < service.gereken ? '#dc2626' : '#059669'}">
+                                    ${service.mevcut - service.gereken > 0 ? '+' : ''}${service.mevcut - service.gereken}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (service.liste && Array.isArray(service.liste) && service.liste.length > 0) {
+                    itemHTML += `
+                        <div class="service-note" style="background: ${isNotNeeded ? '#f1f5f9' : '#f0f9ff'}; border-left-color: ${color}; border-left-width: 3px;">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: #1e293b; display: flex; justify-content: space-between; align-items: center;">
+                                <span>📋 Mevcut Tesisler</span>
+                                <span style="background: ${color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${service.liste.length}</span>
+                            </div>
+                            <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: #475569; line-height: 1.8;">
+                    `;
+                    
+                    service.liste.forEach((facility, index) => {
+                        if (index < 5) {
+                            let facilityName = facility.ad;
+                            if (!facilityName || facilityName === 'Potansiyel alan' || facilityName === 'null' || facilityName.toLowerCase() === 'null') {
+                                facilityName = `İsimsiz (#${index + 1})`;
+                            }
+                            itemHTML += `<li style="margin-bottom: 4px;">${facilityName}</li>`;
+                        }
+                    });
+                    
+                    if (service.liste.length > 5) {
+                        itemHTML += `<li style="color: #64748b; font-style: italic; font-weight: 500;">+${service.liste.length - 5} tane daha...</li>`;
+                    }
+                    
+                    itemHTML += `</ul></div>`;
+                }
+
+                if (service.not) {
+                    itemHTML += `<div class="service-note">💡 ${service.not}</div>`;
+                }
+
+                item.innerHTML = itemHTML;
+                content.appendChild(item);
+            }
+
+            // ==========================================
+            // TÜM KATEGORİLERİ HARDCODE İLE EKLE
+            // ==========================================
+            
+            // 1. OKULLAR
+            if (analiz.okullar) {
+                createServiceCard('Okullar', '🏫', '#2196F3', analiz.okullar);
+            }
+            
+            // 2. SAĞLIK OCAKLARI
+            if (analiz.saglik_ocaklari) {
+                createServiceCard('Sağlık Ocakları', '🏥', '#F44336', analiz.saglik_ocaklari);
+            }
+            
+            // 3. PARKLAR VE YEŞİL ALANLAR
+            if (analiz.parklar_yesil_alanlar) {
+                createServiceCard('Parklar ve Yeşil Alanlar', '🌳', '#4CAF50', analiz.parklar_yesil_alanlar);
+            }
+            
+            // 4. SPOR TESİSLERİ
+            if (analiz.spor_tesisleri) {
+                createServiceCard('Spor Tesisleri', '⚽', '#FF9800', analiz.spor_tesisleri);
+            }
+            
+            // 5. KÜTÜPHANELER
+            if (analiz.kutuphaneler) {
+                createServiceCard('Kütüphaneler', '📚', '#9C27B0', analiz.kutuphaneler);
+            }
+            
+            // 6. AFET TOPLANMA ALANLARI
+            if (analiz.afet_toplanma_alanlari) {
+                createServiceCard('Afet Toplanma Alanları', '🚨', '#FFEB3B', analiz.afet_toplanma_alanlari);
+            }
+            
+            // 7. BOŞ ARAZİLER
+            if (analiz.bos_araziler) {
+                createServiceCard('Boş Araziler', '🏗️', '#607D8B', analiz.bos_araziler);
+            }
+
+            document.getElementById('detailView').classList.add('active');
+        }
+
+        // ============================================
+        // DETAYI KAPAT
+        // ============================================
+        function closeDetail() {
+            document.getElementById('detailView').classList.remove('active');
+            document.querySelector('.neighborhoods-section').style.display = 'block';
+            
+            // Aktif vurguyu kaldır
+            document.querySelectorAll('.neighborhood-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Tesis marker'larını temizle
+            clearMarkers();
+
+            activeNeighborhood = null;
+            
+            console.log('🔙 Mahalle listesine dönüldü, markerlar temizlendi');
+        }
+
+        // ============================================
+        // SENARYO YÖNETİMİ FONKSİYONLARI (YENİ)
+        // ============================================
+        
+        // Senaryo Panelini Başlat
+        function initSenaryoPanel() {
+            const toggleBtn = document.getElementById('senaryoToggleBtn');
+            const closeBtn = document.getElementById('senaryoCloseBtn');
+            const panel = document.getElementById('senaryoPanel');
+            const kaydetBtn = document.getElementById('kaydetBtn');
+            const iptalBtn = document.getElementById('iptalBtn');
+
+            // Panel aç/kapa
+            toggleBtn.addEventListener('click', () => {
+                panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            });
+
+            closeBtn.addEventListener('click', () => {
+                panel.style.display = 'none';
+            });
+
+            // Kaydet butonu
+            kaydetBtn.addEventListener('click', kaydetParametreler);
+
+            // İptal butonu
+            iptalBtn.addEventListener('click', () => {
+                yukleParametreler();
+                showToast('İptal edildi', 'success');
+            });
+        }
+
+        // Parametreleri Yükle
+        async function yukleParametreler() {
+            try {
+                const response = await fetch('http://localhost:3000/api/parametreler');
+                const data = await response.json();
+
+                if (data.success) {
+                    parametreler = data.data;
+                    originalParametreler = JSON.parse(JSON.stringify(data.data));
+                    renderParametreler();
+                    console.log('✅ Parametreler yüklendi:', parametreler.length);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('❌ Parametre yükleme hatası:', error);
+                showToast('Parametreler yüklenirken hata oluştu', 'error');
+                document.getElementById('parametreListesi').innerHTML = 
+                    '<div class="loading" style="color: #e53e3e;">Parametreler yüklenemedi.</div>';
+            }
+        }
+
+        // Parametreleri Render Et
+        function renderParametreler() {
+            const container = document.getElementById('parametreListesi');
+            
+            if (parametreler.length === 0) {
+                container.innerHTML = '<div class="loading">Parametre bulunamadı.</div>';
+                return;
+            }
+
+            container.innerHTML = parametreler.map(param => `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; transition: all 0.2s ease;">
+                    <label style="display: block; font-weight: 600; color: #2d3748; margin-bottom: 8px; font-size: 14px;">
+                        ${formatParametreAdi(param.parametre_adi)}
+                    </label>
+                    ${param.aciklama ? `
+                        <div style="font-size: 12px; color: #718096; margin-bottom: 10px;">${param.aciklama}</div>
+                    ` : ''}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input 
+                            type="number" 
+                            style="flex: 1; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: all 0.2s ease;"
+                            data-id="${param.id}"
+                            value="${param.deger}"
+                            step="0.01"
+                            min="0"
+                            onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 3px rgba(102, 126, 234, 0.1)';"
+                            onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none';"
+                        />
+                        <span style="font-size: 13px; color: #718096; font-weight: 500; min-width: 60px;">${param.birim || ''}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Parametre Adı Formatla
+        function formatParametreAdi(adi) {
+            return adi
+                .split('_')
+                .map(kelime => kelime.charAt(0).toUpperCase() + kelime.slice(1))
+                .join(' ');
+        }
+
+        // Parametreleri Kaydet
+        async function kaydetParametreler() {
+            const kaydetBtn = document.getElementById('kaydetBtn');
+            kaydetBtn.disabled = true;
+            kaydetBtn.innerHTML = '⏳ Kaydediliyor...';
+
+            try {
+                const inputs = document.querySelectorAll('#parametreListesi input[type="number"]');
+                const guncellenenParametreler = Array.from(inputs).map(input => ({
+                    id: parseInt(input.dataset.id),
+                    deger: parseFloat(input.value)
+                }));
+
+                const hataliDeger = guncellenenParametreler.find(p => isNaN(p.deger) || p.deger < 0);
+                if (hataliDeger) {
+                    throw new Error('Lütfen tüm değerlerin geçerli sayılar olduğundan emin olun.');
+                }
+
+                const response = await fetch('http://localhost:3000/api/parametreler/guncelle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parametreler: guncellenenParametreler })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(`✅ Senaryo güncellendi! (${data.updatedCount} parametre)`, 'success');
+                    await yukleParametreler();
+                    
+                    // Mevcut fetchData() fonksiyonunu çağır (analizi yenile)
+                    await fetchData();
+                    
+                    setTimeout(() => {
+                        document.getElementById('senaryoPanel').style.display = 'none';
+                    }, 1500);
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('❌ Kaydetme hatası:', error);
+                showToast('Kaydetme hatası: ' + error.message, 'error');
+            } finally {
+                kaydetBtn.disabled = false;
+                kaydetBtn.innerHTML = '💾 Kaydet ve Analizi Yenile';
+            }
+        }
+
+        // Toast Bildirim
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) existingToast.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                background: white; padding: 16px 24px; border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); z-index: 2000;
+                display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500;
+                animation: toastSlideIn 0.3s ease;
+                border-left: 4px solid ${type === 'success' ? '#48bb78' : '#f56565'};
+                color: ${type === 'success' ? '#2f855a' : '#c53030'};
+            `;
+            
+            const icon = type === 'success' ? '✅' : '❌';
+            toast.innerHTML = `<span style="font-size: 20px;">${icon}</span><span>${message}</span>`;
+            
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============================================
+        // SAYFA YÜKLENME
+        // ============================================
+        window.onload = function() {
+            console.log('🚀 Karabağlar KDS Başlatılıyor...');
+            initMap();
+            fetchData();
+            
+            // Senaryo Yönetimi Başlat (YENİ)
+            initSenaryoPanel();
+            yukleParametreler();
+        };
+    </script>
+
+    <!-- =============================================
+         LEGEND BOX (GÖSTERGE)
+         ============================================= -->
+    <div id="legendBox" class="map-legend" style="display: none;">
+        <h4 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: #333;">📊 Harita Göstergesi</h4>
+        <div class="legend-item"><span class="color-box" style="background: #e74c3c;"></span> Kritik Mahalle</div>
+        <div class="legend-item"><span class="color-box" style="background: #f39c12;"></span> Dikkat</div>
+        <div class="legend-item"><span class="color-box" style="background: #2ecc71;"></span> Normal</div>
+        <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+        <div class="legend-item"><span class="dot" style="background: #3498db;"></span> Okul</div>
+        <div class="legend-item"><span class="dot" style="background: #e74c3c;"></span> Sağlık</div>
+        <div class="legend-item"><span class="dot" style="background: #2ecc71;"></span> Park</div>
+    </div>
+
+    <!-- =============================================
+         DASHBOARD MODAL (BASİT VE TEMİZ)
+         ============================================= -->
+    <div id="dashboardModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="background: white; padding: 30px; border-radius: 15px; max-width: 90%; max-height: 90%; overflow-y: auto; position: relative;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px;">
+                <h2 style="margin: 0; color: #1e40af; font-size: 24px;">📊 Detaylı Analiz Raporu</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="btnPdfIndir" class="export-btn pdf-btn" title="PDF İndir">
+                        📄 PDF İndir
+                    </button>
+                    <button id="btnExcelIndir" class="export-btn excel-btn" title="Excel İndir">
+                        📗 Excel İndir
+                    </button>
+                    <button id="btnModalKapat" class="close-btn" style="background: #e74c3c; color: white; border: none; font-size: 24px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                <div class="chart-container" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-top: 0; font-size: 16px; color: #333;">🏙️ Donatı Dağılımı</h3>
+                    <canvas id="chartDonati" style="max-width: 100% !important; max-height: 280px !important; width: 100% !important; height: 280px !important;"></canvas>
+                </div>
+                <div class="chart-container" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-top: 0; font-size: 16px; color: #333;">📊 Kritik Mahalleler</h3>
+                    <canvas id="chartKritik" style="max-width: 100% !important; max-height: 280px !important; width: 100% !important; height: 280px !important;"></canvas>
+                </div>
+                <div class="chart-container" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-top: 0; font-size: 16px; color: #333;">📈 Nüfus Analizi</h3>
+                    <canvas id="chartNufus" style="max-width: 100% !important; max-height: 280px !important; width: 100% !important; height: 280px !important;"></canvas>
+                </div>
+                <div class="chart-container" style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-top: 0; font-size: 16px; color: #333;">💰 Bütçe Simülasyonu</h3>
+                    <canvas id="chartButce" style="max-width: 100% !important; max-height: 280px !important; width: 100% !important; height: 280px !important;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================
+         ACİL DURUM BUTON BAĞLAYICISI (FORCE CLICK)
+         ============================================= -->
+    <script>
+        console.log("⚡ Acil Müdahale Scripti Devrede!");
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // --- 1. DETAYLI ANALİZ BUTONU ---
+            // Butonu bulmak için tüm ihtimalleri dene
+            const btnAnaliz = document.getElementById('analizRaporuBtn') || 
+                              document.getElementById('btnAnalizAc') || 
+                              document.querySelector('.header-analiz-btn');
+            
+            const modal = document.getElementById('dashboardModal');
+            const btnKapat = document.getElementById('btnModalKapat') || 
+                             document.querySelector('.close-btn');
+
+            if (btnAnaliz && modal) {
+                console.log("✅ Analiz Butonu ve Modal Bulundu. Tıklama olayı ekleniyor...");
+                
+                // Mevcut eventleri temizle ve yenisini ekle
+                btnAnaliz.onclick = function(e) {
+                    e.preventDefault(); 
+                    console.log("🖱️ Analiz Butonuna TIKLANDI! (Force Click)");
+                    console.log("📦 Modal Element:", modal);
+                    console.log("📦 Modal Display Önce:", modal.style.display);
+                    
+                    // Modal'ı görünür yap (Tüm stilleri set et)
+                    modal.style.display = 'flex';
+                    modal.style.position = 'fixed';
+                    modal.style.top = '0';
+                    modal.style.left = '0';
+                    modal.style.width = '100%';
+                    modal.style.height = '100%';
+                    modal.style.zIndex = '99999';
+                    modal.style.justifyContent = 'center';
+                    modal.style.alignItems = 'center';
+                    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                    
+                    console.log("📦 Modal Display Sonra:", modal.style.display);
+                    console.log("✅ Modal Açıldı!");
+                    
+                    // updateCharts fonksiyonu varsa çalıştır
+                    if(typeof updateCharts === 'function') {
+                        try { 
+                            console.log("🎨 Grafikler çağrılıyor...");
+                            updateCharts(); 
+                        } catch(err) { 
+                            console.log("❌ Grafik hatası:", err); 
+                        }
+                    } else {
+                        console.log("⚠️ updateCharts fonksiyonu bulunamadı!");
+                    }
+                };
+            } else {
+                console.error("❌ HATA: Analiz Butonu veya Modal HTML içinde bulunamadı!");
+                console.log("Buton:", btnAnaliz);
+                console.log("Modal:", modal);
+            }
+
+            // Kapatma Butonu
+            if (btnKapat && modal) {
+                console.log("✅ Modal Kapat Butonu Bulundu.");
+                btnKapat.onclick = function() { 
+                    console.log("🚪 Modal Kapatılıyor...");
+                    modal.style.display = 'none';
+                    console.log("✅ Modal Kapatıldı!");
+                };
+            } else {
+                console.error("❌ Kapat butonu bulunamadı!");
+            }
+
+            // Modal dışına tıklayınca kapat
+            if (modal) {
+                modal.onclick = function(e) {
+                    if (e.target === modal) {
+                        console.log("🖱️ Modal Dışına Tıklandı, Kapatılıyor...");
+                        modal.style.display = 'none';
+                        console.log("✅ Modal Kapatıldı!");
+                    }
+                };
+            }
+
+            // ESC tuşu ile kapat
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+                    console.log("⌨️ ESC ile Modal Kapatılıyor...");
+                    modal.style.display = 'none';
+                    console.log("✅ Modal Kapatıldı!");
+                }
+            });
+
+            // --- 2. GÖSTERGE (LEJANT) BUTONU ---
+            const btnGosterge = document.getElementById('btnGostergeToggle') || 
+                                document.getElementById('legendToggleBtn') ||
+                                document.querySelector('.legend-toggle-btn');
+            const legendBox = document.getElementById('legendBox') || 
+                              document.querySelector('.map-legend');
+
+            if (btnGosterge && legendBox) {
+                console.log("✅ Gösterge Butonu ve Kutusu Bulundu.");
+                btnGosterge.onclick = function() {
+                    console.log("🖱️ Göstergeye Tıklandı.");
+                    if (legendBox.style.display === 'none' || legendBox.style.display === '') {
+                        legendBox.style.display = 'block';
+                        console.log("📊 Gösterge Açıldı!");
+                    } else {
+                        legendBox.style.display = 'none';
+                        console.log("📊 Gösterge Kapandı!");
+                    }
+                };
+            } else {
+                console.error("❌ Gösterge butonu veya kutusu bulunamadı!");
+                console.log("Gösterge Buton:", btnGosterge);
+                console.log("Gösterge Kutu:", legendBox);
+            }
+
+            console.log("✅ Acil Müdahale Scripti Tamamlandı!");
+        });
+    </script>
+
+    <!-- Ana JavaScript Dosyası -->
+    <script src="script.js"></script>
+
+    <!-- Grafik Motoru (HTML'e Gömülü) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        console.log("🚀 KDS Sistemi (Auto-Open Modu) Hazır!");
+
+        // Chart.js Global Ayarlar
+        if (typeof Chart !== 'undefined') {
+            Chart.defaults.responsive = true;
+            Chart.defaults.maintainAspectRatio = false;
+        }
+
+        // --- GRAFİK MOTORU ---
+        window.updateCharts = async function(scenarioData = null) {
+            if (typeof Chart === 'undefined') return;
+
+            console.log("📊 Grafikler Güncelleniyor...", scenarioData ? "🎭 SENARYO MODU" : "🔵 NORMAL MOD");
+
+            // Ortak Ayarlar (Kutudan taşmayı engeller)
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                aspectRatio: 1.5,
+                layout: { padding: 5 },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } } }
+            };
+
+            // --- 1. DONATI DAĞILIMI (PASTA) ---
+            const ctxDonati = document.getElementById('chartDonati');
+            if (ctxDonati) {
+                if (window.chartDonati instanceof Chart) window.chartDonati.destroy();
+                
+                let labels = ['Yükleniyor...']; let data = [1];
+                try {
+                    const res = await fetch('/api/grafik/dagilim');
+                    if(res.ok) {
+                        const json = await res.json();
+                        // Afet alanını filtrele
+                        const indices = json.labels.map((l, i) => l.includes('Afet') ? -1 : i).filter(i => i !== -1);
+                        labels = indices.map(i => json.labels[i]);
+                        data = indices.map(i => json.data[i]);
+                    }
+                } catch(e) { console.error("Donatı API Hatası:", e); }
+
+                window.chartDonati = new Chart(ctxDonati, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        ...commonOptions,
+                        plugins: {
+                            legend: { position: 'right', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } },
+                            title: { display: true, text: '🏙️ Kentsel Donatı Dağılımı', font: { size: 13, weight: 'bold' } }
+                        }
+                    }
+                });
+            }
+
+            // --- 2. KRİTİK MAHALLELER (Zorluk Seviyesi) ---
+            const ctxKritik = document.getElementById('chartKritik');
+            if (ctxKritik) {
+                if (window.chartKritik instanceof Chart) window.chartKritik.destroy();
+                
+                let kLabels = []; let kData = [];
+                try {
+                    const res = await fetch('/api/grafik/kritik');
+                    if(res.ok) { const j = await res.json(); kLabels=j.labels; kData=j.data; }
+                } catch(e) { console.error("Kritik API Hatası:", e); }
+
+                // *** SENARYO ETKİSİ: Mesafe düştüyse eksik sayısı artar ***
+                if (scenarioData && scenarioData.yurumeMesafe) {
+                    const zorluk = (800 / scenarioData.yurumeMesafe); // 800m referans
+                    if (zorluk > 1) {
+                        kData = kData.map(d => Math.floor(d * zorluk) + 1);
+                        console.log(`⚠️ SENARYO ETKİSİ: Yürüme ${scenarioData.yurumeMesafe}m → Zorluk x${zorluk.toFixed(2)}`);
+                    }
+                }
+
+                window.chartKritik = new Chart(ctxKritik, {
+                    type: 'bar',
+                    data: {
+                        labels: kLabels,
+                        datasets: [{
+                            label: scenarioData ? '🎭 Senaryo Bazlı Eksik' : 'Mevcut Eksik',
+                            data: kData,
+                            // Senaryoda PARLAK TURUNCU
+                            backgroundColor: scenarioData ? '#ff5722' : '#ef4444', 
+                            borderRadius: 4
+                        }]
+                    },
+                    options: { 
+                        ...commonOptions, 
+                        indexAxis: 'y',
+                        scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: { ticks: { font: { size: 10 } } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: { 
+                                display: true, 
+                                text: scenarioData ? '⚠️ Kritik Mahalleler (Senaryo Etkisi)' : '⚠️ Kritik Mahalleler',
+                                font: { size: 13, weight: 'bold' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // --- 3. NÜFUS ANALİZİ ---
+            const ctxNufus = document.getElementById('chartNufus');
+            if (ctxNufus) {
+                if (window.chartNufus instanceof Chart) window.chartNufus.destroy();
+                let nL=[]; let nD=[];
+                try{ 
+                    const r=await fetch('/api/grafik/nufus'); 
+                    if(r.ok){const j=await r.json(); nL=j.labels; nD=j.data;} 
+                }catch(e){ console.error("Nüfus API Hatası:", e); }
+
+                window.chartNufus = new Chart(ctxNufus, {
+                    type: 'bar',
+                    data: {
+                        labels: nL,
+                        datasets: [{ 
+                            label: 'Nüfus (Bin Kişi)', 
+                            data: nD, 
+                            backgroundColor: '#0ea5e9', 
+                            borderRadius: 4 
+                        }]
+                    },
+                    options: {
+                        ...commonOptions,
+                        scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: { ticks: { font: { size: 10 } } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: '👥 En Kalabalık Mahalleler', font: { size: 13, weight: 'bold' } }
+                        }
+                    }
+                });
+            }
+
+            // --- 4. BÜTÇE SİMÜLASYONU (Maliyet Hesabı) ---
+            const ctxButce = document.getElementById('chartButce');
+            if (ctxButce) {
+                if (window.chartButce instanceof Chart) window.chartButce.destroy();
+                
+                let bData = [12, 19, 15, 25, 32]; // Baz Veri (Milyon TL)
+
+                // *** SENARYO ETKİSİ ***
+                if (scenarioData && scenarioData.maliyet) {
+                    const maliyetCarpan = scenarioData.maliyet / 2500; // 2500 TL referans
+                    bData = bData.map(v => Math.round(v * maliyetCarpan));
+                    console.log(`💰 SENARYO ETKİSİ: Maliyet ${scenarioData.maliyet} → Çarpan x${maliyetCarpan.toFixed(2)}`);
+                }
+
+                window.chartButce = new Chart(ctxButce, {
+                    type: 'line',
+                    data: {
+                        labels: ['2021', '2022', '2023', '2024', '2025 (Tahmin)'],
+                        datasets: [{
+                            label: scenarioData ? '🎭 Senaryo Bütçesi (Milyon TL)' : 'Planlanan Yatırım',
+                            data: bData,
+                            borderColor: scenarioData ? '#d500f9' : '#f59e0b', // Senaryoda NEON MOR
+                            backgroundColor: scenarioData ? 'rgba(213, 0, 249, 0.2)' : 'rgba(245, 158, 11, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        ...commonOptions,
+                        scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: { ticks: { font: { size: 10 } } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            title: { 
+                                display: true, 
+                                text: scenarioData ? '💰 Bütçe Projeksiyonu (Senaryo Etkisi)' : '💰 Yatırım Bütçesi Projeksiyonu',
+                                font: { size: 13, weight: 'bold' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            console.log("✅ Tüm Grafikler Başarıyla Çizildi!");
+        };
+
+        // --- EVENT LISTENERS ---
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("🎬 DOM Yüklendi!");
+            window.updateCharts(); // İlk açılış
+
+            // 1️⃣ PDF İNDİRME (Gelişmiş - Scroll Fix) 📄
+            const btnPDF = document.querySelector('.btn-pdf') || document.getElementById('btnPdfIndir');
+            if(btnPDF) {
+                btnPDF.onclick = function() {
+                    console.log("📄 PDF Hazırlanıyor (Gelişmiş Mod)...");
+                    
+                    const element = document.querySelector('.modal-content') || document.getElementById('dashboardModal');
+                    if(!element) {
+                        alert("Modal bulunamadı! Lütfen Dashboard'u açın.");
+                        return;
+                    }
+                    
+                    // Kullanıcıya bilgi ver
+                    const orjText = btnPDF.innerText;
+                    btnPDF.innerText = "⏳ Hazırlanıyor...";
+                    btnPDF.disabled = true;
+
+                    // Html2Canvas Ayarları (Tam sayfa çekim için)
+                    const options = {
+                        scale: 2, // Yüksek Kalite
+                        useCORS: true,
+                        scrollY: -window.scrollY, // Kaydırma sorununu çözer
+                        windowHeight: element.scrollHeight + 100, // Tüm uzunluğu kapsa
+                        logging: false
+                    };
+
+                    if(window.html2canvas && window.jspdf) {
+                        html2canvas(element, options).then(canvas => {
+                            const imgData = canvas.toDataURL('image/png');
+                            const { jsPDF } = window.jspdf;
+                            const pdf = new jsPDF('l', 'mm', 'a4'); // Yatay A4
+                            
+                            const imgWidth = 290; // A4 Genişliği (Kenar boşluğu payı)
+                            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                            
+                            pdf.addImage(imgData, 'PNG', 5, 5, imgWidth, imgHeight);
+                            pdf.save("Karabaglar_KDS_Raporu.pdf");
+                            
+                            // Butonu eski haline döndür
+                            btnPDF.innerText = orjText;
+                            btnPDF.disabled = false;
+                            
+                            console.log("✅ PDF başarıyla oluşturuldu!");
+                        }).catch(err => {
+                            console.error("PDF Hatası:", err);
+                            alert("PDF oluşturulurken hata oluştu!");
+                            btnPDF.innerText = orjText;
+                            btnPDF.disabled = false;
+                        });
+                    } else {
+                        alert("PDF kütüphaneleri yüklenemedi!");
+                        btnPDF.innerText = orjText;
+                        btnPDF.disabled = false;
+                    }
+                };
+            }
+
+            // 2️⃣ EXCEL İNDİRME (Canlı Veri) 📗
+            const btnExcel = document.querySelector('.btn-excel') || document.getElementById('btnExcelIndir');
+            if(btnExcel) {
+                btnExcel.onclick = function() {
+                    console.log("📗 Excel İndiriliyor (Canlı Veri)...");
+                    
+                    if(typeof XLSX === 'undefined') { 
+                        alert("Excel kütüphanesi yüklenmedi!"); 
+                        return; 
+                    }
+
+                    // A. Kritik Mahalle Verilerini Grafikten Çal
+                    let kritikVeri = [];
+                    if (window.chartKritik && window.chartKritik.data) {
+                        const labels = window.chartKritik.data.labels || [];
+                        const values = window.chartKritik.data.datasets[0]?.data || [];
+                        
+                        kritikVeri = labels.map((lbl, i) => ({
+                            "Mahalle Adı": lbl,
+                            "Eksik Donatı Sayısı": values[i],
+                            "Durum": values[i] > 3 ? "Çok Kritik" : "Riskli"
+                        }));
+                        
+                        console.log("📊 Kritik Mahalle Verileri:", kritikVeri);
+                    }
+
+                    // B. Bütçe Verilerini Grafikten Çal
+                    let butceVeri = [];
+                    if (window.chartButce && window.chartButce.data) {
+                        const bLabels = window.chartButce.data.labels || [];
+                        const bValues = window.chartButce.data.datasets[0]?.data || [];
+
+                        butceVeri = bLabels.map((lbl, i) => ({
+                            "Yıl": lbl,
+                            "Öngörülen Bütçe (Milyon TL)": bValues[i]
+                        }));
+                        
+                        console.log("💰 Bütçe Verileri:", butceVeri);
+                    }
+
+                    // C. Nüfus Verilerini Grafikten Çal (Bonus)
+                    let nufusVeri = [];
+                    if (window.chartNufus && window.chartNufus.data) {
+                        const nLabels = window.chartNufus.data.labels || [];
+                        const nValues = window.chartNufus.data.datasets[0]?.data || [];
+
+                        nufusVeri = nLabels.map((lbl, i) => ({
+                            "Mahalle Adı": lbl,
+                            "Nüfus (Bin Kişi)": nValues[i]
+                        }));
+                    }
+
+                    // D. Excel Dosyasını Oluştur
+                    const wb = XLSX.utils.book_new();
+                    
+                    // Sayfa 1: Kritik Mahalleler
+                    if(kritikVeri.length > 0) {
+                        const ws1 = XLSX.utils.json_to_sheet(kritikVeri);
+                        XLSX.utils.book_append_sheet(wb, ws1, "Kritik Analiz");
+                    }
+
+                    // Sayfa 2: Bütçe
+                    if(butceVeri.length > 0) {
+                        const ws2 = XLSX.utils.json_to_sheet(butceVeri);
+                        XLSX.utils.book_append_sheet(wb, ws2, "Bütçe Projeksiyonu");
+                    }
+
+                    // Sayfa 3: Nüfus (Bonus)
+                    if(nufusVeri.length > 0) {
+                        const ws3 = XLSX.utils.json_to_sheet(nufusVeri);
+                        XLSX.utils.book_append_sheet(wb, ws3, "Nüfus Analizi");
+                    }
+
+                    // Dosyayı İndir
+                    XLSX.writeFile(wb, "Karabaglar_Analiz_Raporu.xlsx");
+                    console.log("✅ Excel başarıyla oluşturuldu!");
+                };
+            }
+
+            // 🎯 SENARYO BUTONU (OTO-AÇMA ÖZELLİKLİ)
+            const modal = document.getElementById('dashboardModal') || document.querySelector('.modal-overlay');
+            const btns = document.querySelectorAll('button');
+            
+            btns.forEach(btn => {
+                if(btn.innerText.includes("Kaydet ve Analizi Yenile")) {
+                    console.log("✅ Senaryo butonu bulundu!");
+                    
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault(); // Sayfa yenilenmesin
+                        
+                        console.log("⚙️ Senaryo İşleniyor...");
+                        
+                        // Inputlardan veriyi "Temizleyerek" al (Türkçe format sorunu için)
+                        let maliyet = 2500;
+                        let mesafe = 800;
+
+                        const inputs = document.querySelectorAll('input');
+                        inputs.forEach(inp => {
+                            // "2.500,00" -> "2500.00" çevirimi
+                            let cleanVal = inp.value.replace(/\./g, '').replace(',', '.'); 
+                            let val = parseFloat(cleanVal);
+                            
+                            if (!val) return;
+                            
+                            // Akıllı tespit
+                            if (val > 1000) maliyet = val;
+                            else if (val > 50 && val <= 1000) mesafe = val;
+                        });
+
+                        console.log("📊 Algılanan:", { maliyet, mesafe });
+
+                        // 1. Grafikleri Güncelle
+                        window.updateCharts({ maliyet, yurumeMesafe: mesafe });
+
+                        // 2. Modalı OTOMATİK AÇ
+                        if(modal) {
+                            modal.style.display = 'flex';
+                            console.log("🎉 Dashboard otomatik açıldı!");
+                            
+                            alert(`✅ Senaryo Uygulandı!\n\n💰 Maliyet: ${maliyet} TL\n🚶 Mesafe: ${mesafe}m\n\n🎨 Grafikler şimdi TURUNCU/MOR renkte!\n\nDashboard otomatik açıldı.`);
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
